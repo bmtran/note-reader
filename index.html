@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Reader</title>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow-bravura.js"></script>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --correct: #4ecca3;
+      --wrong: #e94560;
+      --text: #f0f0f0;
+      --c: #ff6b6b;
+      --d: #ff9f43;
+      --e: #ffd93d;
+      --f: #6bcb77;
+      --g: #4d96ff;
+      --a: #c77dff;
+      --b: #ff6bcb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.18);
+      width: 100%;
+      max-width: 420px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--c), var(--d), var(--e), var(--f), var(--g), var(--a), var(--b));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .clef-toggle {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .clef-btn {
+      padding: 0.4rem 1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .clef-btn:hover { background: rgba(255,255,255,0.1); }
+    .clef-btn.active {
+      background: rgba(255,255,255,0.9);
+      color: #764ba2;
+      border-color: rgba(255,255,255,0.9);
+    }
+
+    .staff-area {
+      background: #f8f9fa;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 160px;
+      transition: box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .staff-area.correct { box-shadow: 0 0 0 3px var(--correct), 0 0 24px rgba(78,204,163,0.4); }
+    .staff-area.wrong   { box-shadow: 0 0 0 3px var(--wrong),  0 0 24px rgba(233,69,96,0.4); }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+    .staff-area.shake { animation: shake 0.35s ease; }
+
+    .feedback {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.4rem;
+      font-weight: 800;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      text-shadow: none;
+      z-index: 10;
+    }
+    .feedback.show { opacity: 1; }
+    .feedback.correct { color: #2e7d32; }
+    .feedback.wrong   { color: #c62828; }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .note-btn {
+      padding: 0.7rem 0.2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      transition: transform 0.12s, box-shadow 0.12s;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .note-btn:hover  { transform: scale(1.08); }
+    .note-btn:active { transform: scale(0.93); }
+
+    .note-btn[data-note="C"] { background: var(--c); }
+    .note-btn[data-note="D"] { background: var(--d); }
+    .note-btn[data-note="E"] { background: var(--e); color: #333; text-shadow: none; }
+    .note-btn[data-note="F"] { background: var(--f); }
+    .note-btn[data-note="G"] { background: var(--g); }
+    .note-btn[data-note="A"] { background: var(--a); }
+    .note-btn[data-note="B"] { background: var(--b); }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .score-item { text-align: center; }
+    .score-val  { font-size: 1.4rem; font-weight: 800; color: #fff; }
+    .score-lbl  { font-size: 0.7rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .streak-hearts { color: var(--wrong); }
+
+    .hint-bar {
+      text-align: center;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 1rem;
+    }
+
+    #staffContainer svg { overflow: visible; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Note Reader</h1>
+    <p class="subtitle">Identify the note on the staff</p>
+
+    <div class="clef-toggle">
+      <button class="clef-btn active" data-clef="both">Both</button>
+      <button class="clef-btn" data-clef="treble">Treble</button>
+      <button class="clef-btn" data-clef="bass">Bass</button>
+    </div>
+
+    <div class="staff-area" id="staffArea">
+      <div class="feedback" id="feedback"></div>
+      <div id="staffContainer"></div>
+    </div>
+
+    <div class="answer-grid">
+      <button class="note-btn" data-note="C">C</button>
+      <button class="note-btn" data-note="D">D</button>
+      <button class="note-btn" data-note="E">E</button>
+      <button class="note-btn" data-note="F">F</button>
+      <button class="note-btn" data-note="G">G</button>
+      <button class="note-btn" data-note="A">A</button>
+      <button class="note-btn" data-note="B">B</button>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-item">
+        <div class="score-val" id="scoreVal">0 / 0</div>
+        <div class="score-lbl">Score</div>
+      </div>
+      <div class="score-item">
+        <div class="score-val" id="streakVal">0 <span class="streak-hearts">❤</span></div>
+        <div class="score-lbl">Streak</div>
+      </div>
+      <div class="score-item">
+        <div class="score-val" id="bestVal">0</div>
+        <div class="score-lbl">Best</div>
+      </div>
+    </div>
+
+    <div class="hint-bar">Keys: C D E F G A B &nbsp;|&nbsp; Click buttons</div>
+  </div>
+
+  <script>
+    // ─── Note positions ─────────────────────────────────────────────────────────
+    const TREBLE = [
+      { name:'E', pos:1,  key:'e/4' },
+      { name:'F', pos:1.5,key:'f/4' },
+      { name:'G', pos:2,  key:'g/4' },
+      { name:'A', pos:2.5,key:'a/4' },
+      { name:'B', pos:3,  key:'b/4' },
+      { name:'C', pos:3.5,key:'c/5' },
+      { name:'D', pos:4,  key:'d/5' },
+      { name:'F', pos:5,  key:'f/5' },
+      { name:'G', pos:5.5,key:'g/5' },
+    ];
+
+    const BASS = [
+      { name:'G', pos:1,  key:'g/2' },
+      { name:'A', pos:1.5,key:'a/2' },
+      { name:'B', pos:2,  key:'b/2' },
+      { name:'C', pos:2.5,key:'c/3' },
+      { name:'D', pos:3,  key:'d/3' },
+      { name:'E', pos:3.5,key:'e/3' },
+      { name:'F', pos:4,  key:'f/3' },
+      { name:'A', pos:5,  key:'a/3' },
+    ];
+
+    function renderStaff(clefName, targetNote) {
+      const container = document.getElementById('staffContainer');
+      container.innerHTML = '';
+
+      const {Renderer, Stave, StaveNote, Voice, Formatter} = Vex.Flow;
+
+      const renderer = new Renderer(container, Renderer.Backends.SVG);
+      renderer.resize(320, 150);
+      const context = renderer.getContext();
+
+      const stave = new Stave(10, 10, 280);
+      stave.addClef(clefName);
+      stave.setContext(context).draw();
+
+      const pool = clefName === 'treble' ? TREBLE : BASS;
+      const noteObj = pool.find(n => n.name === targetNote);
+      const key = noteObj ? noteObj.key : 'c/4';
+
+      const note = new StaveNote({clef: clefName, keys: [key], duration: 'w'});
+      const voice = new Voice({num_beats: 4, beat_value: 4});
+      voice.setStrict(false);
+      voice.addTickables([note]);
+
+      new Formatter().joinVoices([voice]).format([voice], 180);
+      voice.draw(context, stave);
+    }
+
+    // ─── Game State ─────────────────────────────────────────────────────────────
+    const state = {
+      clefMode: 'both',
+      current: null,
+      score: 0, total: 0,
+      streak: 0,
+      bestStreak: parseInt(localStorage.getItem('notereader-best') || '0'),
+      answered: false,
+    };
+
+    function pickNote() {
+      const clef = state.clefMode === 'both'
+        ? (Math.random() < 0.5 ? 'treble' : 'bass')
+        : state.clefMode;
+      const pool = clef === 'treble' ? TREBLE : BASS;
+      const unique = [];
+      const seen = new Set();
+      for (const n of pool) {
+        if (!seen.has(n.name)) { unique.push(n); seen.add(n.name); }
+      }
+      const note = unique[Math.floor(Math.random() * unique.length)];
+      return { clef, note };
+    }
+
+    function newQuestion() {
+      state.current = pickNote();
+      state.answered = false;
+      renderStaff(state.current.clef, state.current.note.name);
+      document.getElementById('feedback').className = 'feedback';
+    }
+
+    function checkAnswer(guess) {
+      if (state.answered) return;
+      state.answered = true;
+      state.total++;
+      const area = document.getElementById('staffArea');
+      const fb   = document.getElementById('feedback');
+      const correct = guess === state.current.note.name;
+
+      if (correct) {
+        state.score++;
+        state.streak++;
+        if (state.streak > state.bestStreak) {
+          state.bestStreak = state.streak;
+          localStorage.setItem('notereader-best', state.bestStreak);
+        }
+        area.classList.add('correct');
+        fb.textContent = `✓ ${state.current.note.name}`;
+        fb.className = 'feedback correct show';
+      } else {
+        state.streak = 0;
+        area.classList.add('wrong', 'shake');
+        fb.textContent = `✗ It was ${state.current.note.name}`;
+        fb.className = 'feedback wrong show';
+        setTimeout(() => area.classList.remove('shake'), 350);
+      }
+
+      document.getElementById('scoreVal').textContent = `${state.score} / ${state.total}`;
+      document.getElementById('streakVal').innerHTML = `${state.streak} <span class="streak-hearts">❤</span>`;
+      document.getElementById('bestVal').textContent = state.bestStreak;
+
+      setTimeout(() => {
+        area.classList.remove('correct', 'wrong');
+        newQuestion();
+      }, correct ? 900 : 1500);
+    }
+
+    // ─── Events ─────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.note-btn').forEach(btn =>
+      btn.addEventListener('click', () => checkAnswer(btn.dataset.note))
+    );
+
+    document.querySelectorAll('.clef-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.clef-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.clefMode = btn.dataset.clef;
+        newQuestion();
+      });
+    });
+
+    document.addEventListener('keydown', e => {
+      const m = { c:'C', d:'D', e:'E', f:'F', g:'G', a:'A', b:'B' };
+      if (m[e.key.toLowerCase()]) checkAnswer(m[e.key.toLowerCase()]);
+    });
+
+    // ─── Boot ───────────────────────────────────────────────────────────────────
+    document.getElementById('bestVal').textContent = state.bestStreak;
+    newQuestion();
+  </script>
+</body>
+</html>
