@@ -307,9 +307,9 @@
         const pathKeys = buildDiatonicPath(targetKey);
         const hintKeys = pathKeys.slice(0, -1); // skip target (will add separately)
 
-        // Hint notes as quarter notes
+        // Hint notes as whole notes
         hintKeys.forEach(key => {
-          const hint = new StaveNote({clef: activeClef, keys: [key], duration: 'q'});
+          const hint = new StaveNote({clef: activeClef, keys: [key], duration: 'w'});
           hint.setStyle({ fillStyle: 'rgba(0,0,0,0.35)', strokeStyle: 'rgba(0,0,0,0.35)' });
           hint.setStave(targetStave);
           allTickables.push(hint);
@@ -321,8 +321,8 @@
         target.setStave(targetStave);
         allTickables.push(target);
 
-        // num_beats: each quarter note = 1 beat, whole note = 4 beats
-        const numBeats = hintKeys.length + 4;
+        // num_beats: each whole note = 4 beats
+        const numBeats = (hintKeys.length + 1) * 4;
         const voice = new Voice({num_beats: numBeats, beat_value: 1}).setStrict(false);
         allTickables.forEach(t => voice.addTickable(t));
 
