@@ -9,20 +9,14 @@
     :root {
       --correct: #4ecca3;
       --wrong: #e94560;
-      --c: #ff6b6b;
-      --d: #ff9f43;
-      --e: #ffd93d;
-      --f: #6bcb77;
-      --g: #4d96ff;
-      --a: #c77dff;
-      --b: #ff6bcb;
+      --c: #ff6b6b; --d: #ff9f43; --e: #ffd93d;
+      --f: #6bcb77; --g: #4d96ff; --a: #c77dff; --b: #ff6bcb;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      min-height: 100vh;
-      display: flex; flex-direction: column;
+      min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       padding: 0.75rem; gap: 1rem;
     }
@@ -58,8 +52,7 @@
     }
     .clef-btn:hover { background: rgba(255,255,255,0.1); }
     .clef-btn.active {
-      background: rgba(255,255,255,0.9);
-      color: #764ba2;
+      background: rgba(255,255,255,0.9); color: #764ba2;
       border-color: rgba(255,255,255,0.9);
     }
     .staff-area {
@@ -93,7 +86,7 @@
     .feedback.wrong   { color: #c62828; }
     .answer-grid {
       display: grid; grid-template-columns: repeat(7, 1fr);
-      gap: 0.5rem; margin-bottom: 1rem;
+      gap: 0.5rem; margin-bottom: 0.75rem;
     }
     .note-btn {
       padding: 0.7rem 0.2rem; border: none; border-radius: 12px;
@@ -111,6 +104,26 @@
     .note-btn[data-note="G"] { background: var(--g); }
     .note-btn[data-note="A"] { background: var(--a); }
     .note-btn[data-note="B"] { background: var(--b); }
+    .hint-row {
+      display: flex; gap: 0.5rem; justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+    .hint-btn {
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0.3);
+      background: transparent; color: rgba(255,255,255,0.6);
+      font-size: 0.7rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hint-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9);
+    }
+    .hint-btn:disabled {
+      opacity: 0.25; cursor: not-allowed; border-color: rgba(255,255,255,0.1);
+    }
+    .hint-btn.used {
+      background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.5);
+    }
     .scoreboard {
       display: flex; justify-content: space-around;
       font-size: 0.85rem; color: rgba(255,255,255,0.8);
@@ -139,6 +152,12 @@
     <div class="staff-area" id="staffArea">
       <div class="feedback" id="feedback"></div>
       <div id="staffContainer"></div>
+    </div>
+
+    <div class="hint-row">
+      <button class="hint-btn" id="hintPathBtn">Show Path</button>
+      <button class="hint-btn" id="hintLabelBtn" disabled>Show Labels</button>
+      <button class="hint-btn" id="hintResetBtn">Reset Hints</button>
     </div>
 
     <div class="answer-grid">
@@ -170,29 +189,59 @@
   </div>
 
   <script>
-    // ─── Note pools (expanded to include notes between staves) ──────────────────
+    // ─── Note pools ─────────────────────────────────────────────────────────────
     const TREBLE = [
-      { name:'C', key:'c/4' }, { name:'D', key:'d/4' },
-      { name:'E', key:'e/4' }, { name:'F', key:'f/4' },
-      { name:'G', key:'g/4' }, { name:'A', key:'a/4' },
-      { name:'B', key:'b/4' }, { name:'C', key:'c/5' },
-      { name:'D', key:'d/5' }, { name:'E', key:'e/5' },
-      { name:'F', key:'f/5' }, { name:'G', key:'g/5' },
+      { name:'C', key:'c/4' }, { name:'D', key:'d/4' }, { name:'E', key:'e/4' },
+      { name:'F', key:'f/4' }, { name:'G', key:'g/4' }, { name:'A', key:'a/4' },
+      { name:'B', key:'b/4' }, { name:'C', key:'c/5' }, { name:'D', key:'d/5' },
+      { name:'E', key:'e/5' }, { name:'F', key:'f/5' }, { name:'G', key:'g/5' },
     ];
 
     const BASS = [
       { name:'A', key:'a/2' }, { name:'B', key:'b/2' },
-      { name:'C', key:'c/3' }, { name:'D', key:'d/3' },
-      { name:'E', key:'e/3' }, { name:'F', key:'f/3' },
-      { name:'G', key:'g/3' }, { name:'A', key:'a/3' },
+      { name:'C', key:'c/3' }, { name:'D', key:'d/3' }, { name:'E', key:'e/3' },
+      { name:'F', key:'f/3' }, { name:'G', key:'g/3' }, { name:'A', key:'a/3' },
       { name:'B', key:'b/3' }, { name:'C', key:'c/4' },
     ];
 
+    // ─── Hint helpers ───────────────────────────────────────────────────────────
+    function buildDiatonicPath(targetKey) {
+      const scale = ['c','d','e','f','g','a','b'];
+      const [tNote, tOctStr] = targetKey.split('/');
+      const tOct = parseInt(tOctStr);
+      const tIdx = scale.indexOf(tNote);
+
+      const keys = [];
+      // Ascending from c/4
+      if (tOct > 4 || (tOct === 4 && tIdx >= 0)) {
+        let ci = 0, co = 4;
+        while (true) {
+          keys.push(`${scale[ci]}/${co}`);
+          if (ci === tIdx && co === tOct) break;
+          ci++; if (ci >= 7) { ci = 0; co++; }
+        }
+        return keys;
+      }
+      // Descending from c/4
+      let ci = 0, co = 4;
+      while (true) {
+        keys.push(`${scale[ci]}/${co}`);
+        if (ci === tIdx && co === tOct) break;
+        ci--; if (ci < 0) { ci = 6; co--; }
+      }
+      return keys;
+    }
+
+    function keyToLabel(key) {
+      return key.charAt(0).toUpperCase();
+    }
+
+    // ─── Rendering ──────────────────────────────────────────────────────────────
     function drawGrandStaff(activeClef, targetNote) {
       const container = document.getElementById('staffContainer');
       container.innerHTML = '';
 
-      const {Renderer, Stave, StaveNote, Voice, Formatter, StaveConnector} = Vex.Flow;
+      const {Renderer, Stave, StaveNote, StaveConnector, Annotation} = Vex.Flow;
 
       const renderer = new Renderer(container, Renderer.Backends.SVG);
       renderer.resize(320, 230);
@@ -213,22 +262,65 @@
       brace.setType(StaveConnector.type.BRACE);
       brace.setContext(context).draw();
 
-      const connectorTop = new StaveConnector(staveTop, staveBottom);
-      connectorTop.setType(StaveConnector.type.SINGLE);
-      connectorTop.setContext(context).draw();
+      const bar = new StaveConnector(staveTop, staveBottom);
+      bar.setType(StaveConnector.type.SINGLE);
+      bar.setContext(context).draw();
 
       const pool = activeClef === 'treble' ? TREBLE : BASS;
       const noteObj = pool.find(n => n.name === targetNote);
-      const key = noteObj ? noteObj.key : 'c/4';
+      const targetKey = noteObj ? noteObj.key : 'c/4';
 
-      const note = new StaveNote({clef: activeClef, keys: [key], duration: 'w'});
-      const voice = new Voice({num_beats: 4, beat_value: 4});
-      voice.setStrict(false);
-      voice.addTickables([note]);
+      const targetStave = activeClef === 'treble' ? staveTop : staveBottom;
+      const targetX = width / 2 + 10;
 
-      const activeStave = activeClef === 'treble' ? staveTop : staveBottom;
-      new Formatter().joinVoices([voice]).format([voice], width - 40);
-      voice.draw(context, activeStave);
+      // Target note
+      const target = new StaveNote({clef: activeClef, keys: [targetKey], duration: 'w'});
+      target.setStave(targetStave);
+      target.setX(targetX);
+      target.setContext(context);
+      target.draw();
+
+      // Hints
+      if (state.hintLevel > 0) {
+        const pathKeys = buildDiatonicPath(targetKey);
+        const hintKeys = pathKeys.slice(0, -1); // skip target (already drawn)
+
+        const leftMargin = 60;
+        const availableWidth = targetX - leftMargin - 15;
+
+        hintKeys.forEach((key, i) => {
+          const ratio = hintKeys.length === 1 ? 0.5 : i / (hintKeys.length - 1);
+          const hx = leftMargin + ratio * availableWidth;
+
+          const hint = new StaveNote({clef: activeClef, keys: [key], duration: 'q'});
+          hint.setStave(targetStave);
+          hint.setX(hx);
+
+          // Gray styling
+          try {
+            if (hint.note_heads) {
+              hint.note_heads.forEach(h => h.setStyle({fillStyle: '#bbbbbb', strokeStyle: '#bbbbbb'}));
+            }
+          } catch(e) {}
+          try {
+            hint.setStemStyle({strokeStyle: '#bbbbbb'});
+          } catch(e) {}
+          try {
+            hint.setFlagStyle({fillStyle: '#bbbbbb', strokeStyle: '#bbbbbb'});
+          } catch(e) {}
+
+          if (state.hintLevel >= 2) {
+            const label = keyToLabel(key);
+            const ann = new Annotation(label);
+            ann.setVerticalJustification(Annotation.VerticalJustify.TOP);
+            ann.setFont("Arial", 10, "");
+            hint.addModifier(ann, 0);
+          }
+
+          hint.setContext(context);
+          hint.draw();
+        });
+      }
     }
 
     // ─── Game State ─────────────────────────────────────────────────────────────
@@ -239,7 +331,32 @@
       streak: 0,
       bestStreak: parseInt(localStorage.getItem('notereader-best') || '0'),
       answered: false,
+      hintLevel: 0,
     };
+
+    function updateHintButtons() {
+      const pathBtn = document.getElementById('hintPathBtn');
+      const labelBtn = document.getElementById('hintLabelBtn');
+      const resetBtn = document.getElementById('hintResetBtn');
+
+      if (state.hintLevel >= 1) {
+        pathBtn.classList.add('used');
+        pathBtn.textContent = state.hintLevel >= 1 ? 'Path Shown' : 'Show Path';
+        labelBtn.disabled = false;
+      } else {
+        pathBtn.classList.remove('used');
+        pathBtn.textContent = 'Show Path';
+        labelBtn.disabled = true;
+      }
+
+      if (state.hintLevel >= 2) {
+        labelBtn.classList.add('used');
+        labelBtn.textContent = 'Labels Shown';
+      } else {
+        labelBtn.classList.remove('used');
+        labelBtn.textContent = 'Show Labels';
+      }
+    }
 
     function pickNote() {
       const clef = state.clefMode === 'both'
@@ -258,6 +375,8 @@
     function newQuestion() {
       state.current = pickNote();
       state.answered = false;
+      state.hintLevel = 0;
+      updateHintButtons();
       drawGrandStaff(state.current.clef, state.current.note.name);
       document.getElementById('feedback').className = 'feedback';
       document.getElementById('staffArea').classList.remove('correct', 'wrong', 'shake');
@@ -314,6 +433,24 @@
       });
     });
 
+    document.getElementById('hintPathBtn').addEventListener('click', () => {
+      if (state.hintLevel < 1) { state.hintLevel = 1; }
+      updateHintButtons();
+      drawGrandStaff(state.current.clef, state.current.note.name);
+    });
+
+    document.getElementById('hintLabelBtn').addEventListener('click', () => {
+      if (state.hintLevel < 2) { state.hintLevel = 2; }
+      updateHintButtons();
+      drawGrandStaff(state.current.clef, state.current.note.name);
+    });
+
+    document.getElementById('hintResetBtn').addEventListener('click', () => {
+      state.hintLevel = 0;
+      updateHintButtons();
+      drawGrandStaff(state.current.clef, state.current.note.name);
+    });
+
     document.addEventListener('keydown', e => {
       const m = { c:'C', d:'D', e:'E', f:'F', g:'G', a:'A', b:'B' };
       if (m[e.key.toLowerCase()]) checkAnswer(m[e.key.toLowerCase()]);
@@ -321,6 +458,7 @@
 
     // ─── Boot ───────────────────────────────────────────────────────────────────
     document.getElementById('bestVal').textContent = state.bestStreak;
+    updateHintButtons();
     newQuestion();
   </script>
 </body>
