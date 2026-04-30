@@ -236,13 +236,13 @@
       return key.charAt(0).toUpperCase();
     }
 
-    function addLabelSVGs(hintKeys, labelXPositions, activeClef) {
-      // Append raw SVG text labels after VexFlow rendering is done
+    function addLabelSVGs(hintNotes, activeClef) {
+      // Append raw SVG text labels aligned to VexFlow-rendered hint notes
       const svg = document.querySelector('#staffContainer svg');
       if (!svg) return;
-      hintKeys.forEach((key, i) => {
+      hintNotes.forEach(({ staveNote, key }) => {
         const label = keyToLabel(key);
-        const hx = labelXPositions[i];
+        const hx = staveNote.getAbsoluteX();
         // Y: above the note head — treble above, bass below
         let ly;
         if (activeClef === 'treble') {
@@ -298,70 +298,55 @@
       const targetKey = noteObj ? noteObj.key : 'c/4';
 
       const targetStave = activeClef === 'treble' ? staveTop : staveBottom;
-      const centerX = x + width / 2;
 
-      // Target note — use Voice + Formatter (VexFlow 4 compatible)
-      const target = new StaveNote({clef: activeClef, keys: [targetKey], duration: 'w'});
-      const voice = new Voice({num_beats: 4, beat_value: 1}).setStrict(false);
-      voice.addTickable(target);
-      new Formatter().joinVoices([voice]).format([voice], width - 60);
-      target.setStave(targetStave);
-      target.setContext(context);
-      target.draw();
+      // Build all notes for the shared Voice
+      const hintNotes = []; // { staveNote, key } — for label positioning
+      let allTickables = [];
 
-      // Hints
       if (state.hintLevel > 0) {
         const pathKeys = buildDiatonicPath(targetKey);
-        const hintKeys = pathKeys.slice(0, -1); // skip target (already drawn)
+        const hintKeys = pathKeys.slice(0, -1); // skip target (will add separately)
 
-        const leftMargin = 60;
-        const availableWidth = centerX - leftMargin - 15;
-        const labelXPositions = [];
-
-        // Draw gray hint notes as raw SVG ellipses (avoids broken setX API)
-        const svg = document.querySelector('#staffContainer svg');
-        hintKeys.forEach((key, i) => {
-          const ratio = hintKeys.length === 1 ? 0.5 : i / (hintKeys.length - 1);
-          const hx = leftMargin + ratio * availableWidth;
-          labelXPositions.push(hx);
-
-          // Determine Y position based on which line the note is on
-          const noteName = key.split('/')[0];
-          const oct = parseInt(key.split('/')[1]);
-          // Staff lines: line 0=bottom (y=90), line 4=top (y=50) for treble
-          // Each staff position (line or space) shifts by 10px
-          // C4 = first ledger line below treble staff = y~110
-          // Treble: c/4=d/4=e/4=f/4=g/4=a/4=b/4=c/5...
-          const scale = ['c','d','e','f','g','a','b'];
-          const noteIdx = scale.indexOf(noteName);
-          // For treble: c/4 is at y=110 (first ledger), each step up is -10
-          let stavePos;
-          if (activeClef === 'treble') {
-            // c/4 ledger line below staff (y=110), d/4=100, e/4=90(bottom), f/4=80, g/4=70, a/4=60, b/4=50(top), c/5=40
-            stavePos = 11 - noteIdx - (oct - 4) * 7; // 11 = c/4 position (ledger)
-          } else {
-            // Bass: a/2=y=90(bottom), b/2=80, c/3=70, d/3=60, e/3=50(top), f/3=40, g/3=30, a/3=20, b/3=10, c/4=0
-            stavePos = 9 - (noteIdx === 0 ? 9 : noteIdx) - (oct - 4) * 7;
-          }
-          const noteY = activeClef === 'treble'
-            ? 110 - stavePos * 5  // treble: y decreases going up
-            : 90 + stavePos * 5;  // bass: y increases going up
-
-          // Whole note ellipse: rx=7, ry=5
-          const ell = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-          ell.setAttribute('cx', hx);
-          ell.setAttribute('cy', noteY);
-          ell.setAttribute('rx', '7');
-          ell.setAttribute('ry', '5');
-          ell.setAttribute('fill', '#ffffff');
-          ell.setAttribute('stroke', '#bbbbbb');
-          ell.setAttribute('stroke-width', '1.5');
-          svg.appendChild(ell);
+        // Hint notes as quarter notes
+        hintKeys.forEach(key => {
+          const hint = new StaveNote({clef: activeClef, keys: [key], duration: 'q'});
+          hint.setStyle({ fillStyle: 'rgba(0,0,0,0.35)', strokeStyle: 'rgba(0,0,0,0.35)' });
+          hint.setStave(targetStave);
+          allTickables.push(hint);
+          hintNotes.push({ staveNote: hint, key });
         });
 
+        // Target as whole note
+        const target = new StaveNote({clef: activeClef, keys: [targetKey], duration: 'w'});
+        target.setStave(targetStave);
+        allTickables.push(target);
+
+        // num_beats: each quarter note = 1 beat, whole note = 4 beats
+        const numBeats = hintKeys.length + 4;
+        const voice = new Voice({num_beats: numBeats, beat_value: 1}).setStrict(false);
+        allTickables.forEach(t => voice.addTickable(t));
+
+        new Formatter().joinVoices([voice]).format([voice], width - 60);
+
+        // Draw all notes (hints + target) in voice order
+        allTickables.forEach(t => {
+          t.setContext(context);
+          t.draw();
+        });
+
+        // Labels at hint note positions
         if (state.hintLevel >= 2) {
-          addLabelSVGs(hintKeys, labelXPositions, activeClef);
+          addLabelSVGs(hintNotes, activeClef);
         }
+      } else {
+        // No hints — just the target note
+        const target = new StaveNote({clef: activeClef, keys: [targetKey], duration: 'w'});
+        const voice = new Voice({num_beats: 4, beat_value: 1}).setStrict(false);
+        voice.addTickable(target);
+        new Formatter().joinVoices([voice]).format([voice], width - 60);
+        target.setStave(targetStave);
+        target.setContext(context);
+        target.draw();
       }
     }
 
