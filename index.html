@@ -237,12 +237,26 @@
     }
 
     function addLabelSVGs(hintNotes, activeClef) {
-      // Append raw SVG text labels aligned to VexFlow-rendered hint notes
+      // Append raw SVG text labels centered on VexFlow-rendered hint note heads
       const svg = document.querySelector('#staffContainer svg');
       if (!svg) return;
-      hintNotes.forEach(({ staveNote, key }) => {
+      // Find all rendered note heads — only hint notes have the rgba style
+      const allNoteHeads = [...svg.querySelectorAll('.vf-notehead')];
+      const hintNoteHeads = allNoteHeads.filter(g => {
+        const fill = g.closest('.vf-stavenote')?.getAttribute('fill') || '';
+        return fill.includes('rgba');
+      });
+      hintNotes.forEach(({ key }, i) => {
         const label = keyToLabel(key);
-        const hx = staveNote.getAbsoluteX();
+        let cx;
+        if (i < hintNoteHeads.length) {
+          const path = hintNoteHeads[i].querySelector('path');
+          if (path) {
+            const bbox = path.getBBox();
+            cx = bbox.x + bbox.width / 2;
+          }
+        }
+        if (cx === undefined) cx = 0; // fallback
         // Y: above the note head — treble above, bass below
         let ly;
         if (activeClef === 'treble') {
@@ -251,7 +265,7 @@
           ly = 105; // below the bass staff
         }
         const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        textEl.setAttribute('x', hx);
+        textEl.setAttribute('x', cx);
         textEl.setAttribute('y', ly);
         textEl.setAttribute('text-anchor', 'middle');
         textEl.setAttribute('font-size', '13');
