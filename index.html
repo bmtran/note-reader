@@ -279,7 +279,7 @@
     }
 
     // ─── Rendering ──────────────────────────────────────────────────────────────
-    function drawGrandStaff(activeClef, targetNote) {
+    function drawGrandStaff(activeClef, noteObj) {
       const container = document.getElementById('staffContainer');
       container.innerHTML = '';
 
@@ -309,8 +309,7 @@
       bar.setContext(context).draw();
 
       const pool = activeClef === 'treble' ? TREBLE : BASS;
-      const noteObj = pool.find(n => n.name === targetNote);
-      const targetKey = noteObj ? noteObj.key : 'c/4';
+      const targetKey = noteObj.key;
 
       const targetStave = activeClef === 'treble' ? staveTop : staveBottom;
 
@@ -405,12 +404,7 @@
         ? (Math.random() < 0.5 ? 'treble' : 'bass')
         : state.clefMode;
       const pool = clef === 'treble' ? TREBLE : BASS;
-      const unique = [];
-      const seen = new Set();
-      for (const n of pool) {
-        if (!seen.has(n.name)) { unique.push(n); seen.add(n.name); }
-      }
-      const note = unique[Math.floor(Math.random() * unique.length)];
+      const note = pool[Math.floor(Math.random() * pool.length)];
       return { clef, note };
     }
 
@@ -419,7 +413,7 @@
       state.answered = false;
       state.hintLevel = 0;
       updateHintButtons();
-      drawGrandStaff(state.current.clef, state.current.note.name);
+      drawGrandStaff(state.current.clef, state.current.note);
       document.getElementById('feedback').className = 'feedback';
       document.getElementById('staffArea').classList.remove('correct', 'wrong', 'shake');
     }
@@ -478,19 +472,19 @@
     document.getElementById('hintPathBtn').addEventListener('click', () => {
       if (state.hintLevel < 1) { state.hintLevel = 1; }
       updateHintButtons();
-      drawGrandStaff(state.current.clef, state.current.note.name);
+      drawGrandStaff(state.current.clef, state.current.note);
     });
 
     document.getElementById('hintLabelBtn').addEventListener('click', () => {
       if (state.hintLevel < 2) { state.hintLevel = 2; }
       updateHintButtons();
-      drawGrandStaff(state.current.clef, state.current.note.name);
+      drawGrandStaff(state.current.clef, state.current.note);
     });
 
     document.getElementById('hintResetBtn').addEventListener('click', () => {
       state.hintLevel = 0;
       updateHintButtons();
-      drawGrandStaff(state.current.clef, state.current.note.name);
+      drawGrandStaff(state.current.clef, state.current.note);
     });
 
     document.addEventListener('keydown', e => {
