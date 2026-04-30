@@ -7,7 +7,6 @@
   <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow-bravura.js"></script>
   <style>
     :root {
-      --bg: #1a1a2e;
       --correct: #4ecca3;
       --wrong: #e94560;
       --c: #ff6b6b;
@@ -18,67 +17,62 @@
       --a: #c77dff;
       --b: #ff6bcb;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0.75rem;
-      gap: 1rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 0.75rem; gap: 1rem;
     }
-
     .card {
       background: rgba(255,255,255,0.12);
       backdrop-filter: blur(12px);
-      border-radius: 24px;
-      padding: 1.25rem;
+      border-radius: 24px; padding: 1.25rem;
       box-shadow: 0 8px 32px rgba(0,0,0,0.2);
       border: 1px solid rgba(255,255,255,0.18);
-      width: 100%;
-      max-width: 420px;
+      width: 100%; max-width: 420px;
     }
-
     h1 {
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: 800;
+      text-align: center; font-size: 1.5rem; font-weight: 800;
       background: linear-gradient(90deg, var(--c), var(--d), var(--e), var(--f), var(--g), var(--a), var(--b));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.25rem;
-      letter-spacing: -0.5px;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem; letter-spacing: -0.5px;
     }
-
     .subtitle {
-      text-align: center;
-      color: rgba(255,255,255,0.6);
-      font-size: 0.75rem;
-      margin-bottom: 1rem;
+      text-align: center; color: rgba(255,255,255,0.6);
+      font-size: 0.75rem; margin-bottom: 1rem;
     }
-
+    .clef-toggle {
+      display: flex; gap: 0.5rem;
+      justify-content: center; margin-bottom: 1rem;
+    }
+    .clef-btn {
+      padding: 0.35rem 0.85rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 999px; background: transparent;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .clef-btn:hover { background: rgba(255,255,255,0.1); }
+    .clef-btn.active {
+      background: rgba(255,255,255,0.9);
+      color: #764ba2;
+      border-color: rgba(255,255,255,0.9);
+    }
     .staff-area {
       background: #f8f9fa;
-      border-radius: 12px;
-      padding: 0.5rem;
+      border-radius: 12px; padding: 0.5rem;
       margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       min-height: 210px;
       transition: box-shadow 0.2s;
-      position: relative;
-      overflow: hidden;
+      position: relative; overflow: hidden;
     }
-
     .staff-area.correct { box-shadow: 0 0 0 3px var(--correct), 0 0 24px rgba(78,204,163,0.4); }
     .staff-area.wrong   { box-shadow: 0 0 0 3px var(--wrong),  0 0 24px rgba(233,69,96,0.4); }
-
     @keyframes shake {
       0%,100% { transform: translateX(0); }
       20% { transform: translateX(-8px); }
@@ -87,46 +81,29 @@
       80% { transform: translateX(6px); }
     }
     .staff-area.shake { animation: shake 0.35s ease; }
-
     .feedback {
-      position: absolute;
-      top: 50%;
-      left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 1.4rem;
-      font-weight: 800;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      text-shadow: none;
-      z-index: 10;
+      font-size: 1.4rem; font-weight: 800;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.2s; text-shadow: none; z-index: 10;
     }
     .feedback.show { opacity: 1; }
     .feedback.correct { color: #2e7d32; }
     .feedback.wrong   { color: #c62828; }
-
     .answer-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 0.5rem;
-      margin-bottom: 1rem;
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem; margin-bottom: 1rem;
     }
-
     .note-btn {
-      padding: 0.7rem 0.2rem;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
+      padding: 0.7rem 0.2rem; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; color: #fff;
       transition: transform 0.12s, box-shadow 0.12s;
       text-shadow: 0 1px 3px rgba(0,0,0,0.3);
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .note-btn:hover  { transform: scale(1.08); }
     .note-btn:active { transform: scale(0.93); }
-
     .note-btn[data-note="C"] { background: var(--c); }
     .note-btn[data-note="D"] { background: var(--d); }
     .note-btn[data-note="E"] { background: var(--e); color: #333; text-shadow: none; }
@@ -134,25 +111,17 @@
     .note-btn[data-note="G"] { background: var(--g); }
     .note-btn[data-note="A"] { background: var(--a); }
     .note-btn[data-note="B"] { background: var(--b); }
-
     .scoreboard {
-      display: flex;
-      justify-content: space-around;
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.8);
+      display: flex; justify-content: space-around;
+      font-size: 0.85rem; color: rgba(255,255,255,0.8);
     }
-
     .score-item { text-align: center; }
     .score-val  { font-size: 1.3rem; font-weight: 800; color: #fff; }
     .score-lbl  { font-size: 0.65rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
-
     .streak-hearts { color: var(--wrong); }
-
     .hint-bar {
-      text-align: center;
-      font-size: 0.65rem;
-      color: rgba(255,255,255,0.4);
-      margin-top: 0.75rem;
+      text-align: center; font-size: 0.65rem;
+      color: rgba(255,255,255,0.4); margin-top: 0.75rem;
     }
   </style>
 </head>
@@ -160,6 +129,12 @@
   <div class="card">
     <h1>Note Reader</h1>
     <p class="subtitle">Identify the note on the highlighted staff</p>
+
+    <div class="clef-toggle">
+      <button class="clef-btn active" data-clef="both">Both</button>
+      <button class="clef-btn" data-clef="treble">Treble</button>
+      <button class="clef-btn" data-clef="bass">Bass</button>
+    </div>
 
     <div class="staff-area" id="staffArea">
       <div class="feedback" id="feedback"></div>
@@ -195,17 +170,25 @@
   </div>
 
   <script>
-    // ─── Note pools ─────────────────────────────────────────────────────────────
+    // ─── Note pools (expanded to include notes between staves) ──────────────────
     const TREBLE = [
-      { name:'E', key:'e/4' }, { name:'F', key:'f/4' }, { name:'G', key:'g/4' },
-      { name:'A', key:'a/4' }, { name:'B', key:'b/4' }, { name:'C', key:'c/5' },
-      { name:'D', key:'d/5' }, { name:'F', key:'f/5' }, { name:'G', key:'g/5' },
+      { name:'F', key:'f/3' }, { name:'G', key:'g/3' },
+      { name:'A', key:'a/3' }, { name:'B', key:'b/3' },
+      { name:'C', key:'c/4' }, { name:'D', key:'d/4' },
+      { name:'E', key:'e/4' }, { name:'F', key:'f/4' },
+      { name:'G', key:'g/4' }, { name:'A', key:'a/4' },
+      { name:'B', key:'b/4' }, { name:'C', key:'c/5' },
+      { name:'D', key:'d/5' }, { name:'E', key:'e/5' },
+      { name:'F', key:'f/5' }, { name:'G', key:'g/5' },
     ];
 
     const BASS = [
-      { name:'G', key:'g/2' }, { name:'A', key:'a/2' }, { name:'B', key:'b/2' },
-      { name:'C', key:'c/3' }, { name:'D', key:'d/3' }, { name:'E', key:'e/3' },
-      { name:'F', key:'f/3' }, { name:'A', key:'a/3' },
+      { name:'A', key:'a/2' }, { name:'B', key:'b/2' },
+      { name:'C', key:'c/3' }, { name:'D', key:'d/3' },
+      { name:'E', key:'e/3' }, { name:'F', key:'f/3' },
+      { name:'G', key:'g/3' }, { name:'A', key:'a/3' },
+      { name:'B', key:'b/3' }, { name:'C', key:'c/4' },
+      { name:'D', key:'d/4' }, { name:'E', key:'e/4' },
     ];
 
     function drawGrandStaff(activeClef, targetNote) {
@@ -221,27 +204,22 @@
       const x = 10, width = 280;
       const topY = 10, bottomY = 90;
 
-      // Treble stave
       const staveTop = new Stave(x, topY, width);
       staveTop.addClef('treble');
       staveTop.setContext(context).draw();
 
-      // Bass stave
       const staveBottom = new Stave(x, bottomY, width);
       staveBottom.addClef('bass');
       staveBottom.setContext(context).draw();
 
-      // Brace connecting both staves
       const brace = new StaveConnector(staveTop, staveBottom);
       brace.setType(StaveConnector.type.BRACE);
       brace.setContext(context).draw();
 
-      // Top barline
       const connectorTop = new StaveConnector(staveTop, staveBottom);
       connectorTop.setType(StaveConnector.type.SINGLE);
       connectorTop.setContext(context).draw();
 
-      // Draw note on active clef
       const pool = activeClef === 'treble' ? TREBLE : BASS;
       const noteObj = pool.find(n => n.name === targetNote);
       const key = noteObj ? noteObj.key : 'c/4';
@@ -251,7 +229,6 @@
       voice.setStrict(false);
       voice.addTickables([note]);
 
-      // Format and draw on the active stave
       const activeStave = activeClef === 'treble' ? staveTop : staveBottom;
       new Formatter().joinVoices([voice]).format([voice], width - 40);
       voice.draw(context, activeStave);
@@ -259,6 +236,7 @@
 
     // ─── Game State ─────────────────────────────────────────────────────────────
     const state = {
+      clefMode: 'both',
       current: null,
       score: 0, total: 0,
       streak: 0,
@@ -267,7 +245,9 @@
     };
 
     function pickNote() {
-      const clef = Math.random() < 0.5 ? 'treble' : 'bass';
+      const clef = state.clefMode === 'both'
+        ? (Math.random() < 0.5 ? 'treble' : 'bass')
+        : state.clefMode;
       const pool = clef === 'treble' ? TREBLE : BASS;
       const unique = [];
       const seen = new Set();
@@ -327,6 +307,15 @@
     document.querySelectorAll('.note-btn').forEach(btn =>
       btn.addEventListener('click', () => checkAnswer(btn.dataset.note))
     );
+
+    document.querySelectorAll('.clef-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.clef-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.clefMode = btn.dataset.clef;
+        newQuestion();
+      });
+    });
 
     document.addEventListener('keydown', e => {
       const m = { c:'C', d:'D', e:'E', f:'F', g:'G', a:'A', b:'B' };
