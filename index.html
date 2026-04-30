@@ -10,7 +10,6 @@
       --bg: #1a1a2e;
       --correct: #4ecca3;
       --wrong: #e94560;
-      --text: #f0f0f0;
       --c: #ff6b6b;
       --d: #ff9f43;
       --e: #ffd93d;
@@ -63,36 +62,18 @@
       margin-bottom: 1rem;
     }
 
-    .staff-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-
     .staff-area {
       background: #f8f9fa;
       border-radius: 12px;
       padding: 0.5rem;
+      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 110px;
-      transition: box-shadow 0.2s, opacity 0.3s, transform 0.3s;
+      min-height: 210px;
+      transition: box-shadow 0.2s;
       position: relative;
       overflow: hidden;
-      border: 3px solid transparent;
-    }
-
-    .staff-area.active {
-      border-color: rgba(102, 126, 234, 0.5);
-      box-shadow: 0 0 16px rgba(102, 126, 234, 0.3);
-      transform: scale(1.02);
-    }
-
-    .staff-area.inactive {
-      opacity: 0.35;
-      transform: scale(0.96);
     }
 
     .staff-area.correct { box-shadow: 0 0 0 3px var(--correct), 0 0 24px rgba(78,204,163,0.4); }
@@ -112,7 +93,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 800;
       pointer-events: none;
       opacity: 0;
@@ -173,8 +154,6 @@
       color: rgba(255,255,255,0.4);
       margin-top: 0.75rem;
     }
-
-    .staff-area svg { overflow: visible; }
   </style>
 </head>
 <body>
@@ -182,15 +161,9 @@
     <h1>Note Reader</h1>
     <p class="subtitle">Identify the note on the highlighted staff</p>
 
-    <div class="staff-stack">
-      <div class="staff-area" id="trebleArea">
-        <div class="feedback" id="trebleFeedback"></div>
-        <div id="trebleContainer"></div>
-      </div>
-      <div class="staff-area" id="bassArea">
-        <div class="feedback" id="bassFeedback"></div>
-        <div id="bassContainer"></div>
-      </div>
+    <div class="staff-area" id="staffArea">
+      <div class="feedback" id="feedback"></div>
+      <div id="staffContainer"></div>
     </div>
 
     <div class="answer-grid">
@@ -222,58 +195,66 @@
   </div>
 
   <script>
-    // ─── Note positions ─────────────────────────────────────────────────────────
+    // ─── Note pools ─────────────────────────────────────────────────────────────
     const TREBLE = [
-      { name:'E', pos:1,  key:'e/4' },
-      { name:'F', pos:1.5,key:'f/4' },
-      { name:'G', pos:2,  key:'g/4' },
-      { name:'A', pos:2.5,key:'a/4' },
-      { name:'B', pos:3,  key:'b/4' },
-      { name:'C', pos:3.5,key:'c/5' },
-      { name:'D', pos:4,  key:'d/5' },
-      { name:'F', pos:5,  key:'f/5' },
-      { name:'G', pos:5.5,key:'g/5' },
+      { name:'E', key:'e/4' }, { name:'F', key:'f/4' }, { name:'G', key:'g/4' },
+      { name:'A', key:'a/4' }, { name:'B', key:'b/4' }, { name:'C', key:'c/5' },
+      { name:'D', key:'d/5' }, { name:'F', key:'f/5' }, { name:'G', key:'g/5' },
     ];
 
     const BASS = [
-      { name:'G', pos:1,  key:'g/2' },
-      { name:'A', pos:1.5,key:'a/2' },
-      { name:'B', pos:2,  key:'b/2' },
-      { name:'C', pos:2.5,key:'c/3' },
-      { name:'D', pos:3,  key:'d/3' },
-      { name:'E', pos:3.5,key:'e/3' },
-      { name:'F', pos:4,  key:'f/3' },
-      { name:'A', pos:5,  key:'a/3' },
+      { name:'G', key:'g/2' }, { name:'A', key:'a/2' }, { name:'B', key:'b/2' },
+      { name:'C', key:'c/3' }, { name:'D', key:'d/3' }, { name:'E', key:'e/3' },
+      { name:'F', key:'f/3' }, { name:'A', key:'a/3' },
     ];
 
-    function renderStaff(containerId, clefName, targetNote) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
+    function drawGrandStaff(activeClef, targetNote) {
+      const container = document.getElementById('staffContainer');
       container.innerHTML = '';
 
-      const {Renderer, Stave, StaveNote, Voice, Formatter} = Vex.Flow;
+      const {Renderer, Stave, StaveNote, Voice, Formatter, StaveConnector} = Vex.Flow;
 
       const renderer = new Renderer(container, Renderer.Backends.SVG);
-      renderer.resize(320, 130);
+      renderer.resize(320, 230);
       const context = renderer.getContext();
 
-      const stave = new Stave(10, 10, 280);
-      stave.addClef(clefName);
-      stave.setContext(context).draw();
+      const x = 10, width = 280;
+      const topY = 10, bottomY = 90;
 
-      if (targetNote) {
-        const pool = clefName === 'treble' ? TREBLE : BASS;
-        const noteObj = pool.find(n => n.name === targetNote);
-        const key = noteObj ? noteObj.key : 'c/4';
+      // Treble stave
+      const staveTop = new Stave(x, topY, width);
+      staveTop.addClef('treble');
+      staveTop.setContext(context).draw();
 
-        const note = new StaveNote({clef: clefName, keys: [key], duration: 'w'});
-        const voice = new Voice({num_beats: 4, beat_value: 4});
-        voice.setStrict(false);
-        voice.addTickables([note]);
+      // Bass stave
+      const staveBottom = new Stave(x, bottomY, width);
+      staveBottom.addClef('bass');
+      staveBottom.setContext(context).draw();
 
-        new Formatter().joinVoices([voice]).format([voice], 180);
-        voice.draw(context, stave);
-      }
+      // Brace connecting both staves
+      const brace = new StaveConnector(staveTop, staveBottom);
+      brace.setType(StaveConnector.type.BRACE);
+      brace.setContext(context).draw();
+
+      // Top barline
+      const connectorTop = new StaveConnector(staveTop, staveBottom);
+      connectorTop.setType(StaveConnector.type.SINGLE);
+      connectorTop.setContext(context).draw();
+
+      // Draw note on active clef
+      const pool = activeClef === 'treble' ? TREBLE : BASS;
+      const noteObj = pool.find(n => n.name === targetNote);
+      const key = noteObj ? noteObj.key : 'c/4';
+
+      const note = new StaveNote({clef: activeClef, keys: [key], duration: 'w'});
+      const voice = new Voice({num_beats: 4, beat_value: 4});
+      voice.setStrict(false);
+      voice.addTickables([note]);
+
+      // Format and draw on the active stave
+      const activeStave = activeClef === 'treble' ? staveTop : staveBottom;
+      new Formatter().joinVoices([voice]).format([voice], width - 40);
+      voice.draw(context, activeStave);
     }
 
     // ─── Game State ─────────────────────────────────────────────────────────────
@@ -297,38 +278,12 @@
       return { clef, note };
     }
 
-    function setActiveClef(active) {
-      const trebleArea = document.getElementById('trebleArea');
-      const bassArea = document.getElementById('bassArea');
-      if (active === 'treble') {
-        trebleArea.classList.add('active');
-        trebleArea.classList.remove('inactive');
-        bassArea.classList.add('inactive');
-        bassArea.classList.remove('active');
-      } else {
-        bassArea.classList.add('active');
-        bassArea.classList.remove('inactive');
-        trebleArea.classList.add('inactive');
-        trebleArea.classList.remove('active');
-      }
-    }
-
     function newQuestion() {
       state.current = pickNote();
       state.answered = false;
-
-      // Always render both staves
-      renderStaff('trebleContainer', 'treble', state.current.clef === 'treble' ? state.current.note.name : null);
-      renderStaff('bassContainer', 'bass', state.current.clef === 'bass' ? state.current.note.name : null);
-
-      setActiveClef(state.current.clef);
-
-      document.getElementById('trebleFeedback').className = 'feedback';
-      document.getElementById('bassFeedback').className = 'feedback';
-
-      // Clear any leftover visual states
-      document.getElementById('trebleArea').classList.remove('correct', 'wrong', 'shake');
-      document.getElementById('bassArea').classList.remove('correct', 'wrong', 'shake');
+      drawGrandStaff(state.current.clef, state.current.note.name);
+      document.getElementById('feedback').className = 'feedback';
+      document.getElementById('staffArea').classList.remove('correct', 'wrong', 'shake');
     }
 
     function checkAnswer(guess) {
@@ -336,11 +291,8 @@
       state.answered = true;
       state.total++;
 
-      const activeAreaId = state.current.clef === 'treble' ? 'trebleArea' : 'bassArea';
-      const activeFbId   = state.current.clef === 'treble' ? 'trebleFeedback' : 'bassFeedback';
-      const area = document.getElementById(activeAreaId);
-      const fb   = document.getElementById(activeFbId);
-
+      const area = document.getElementById('staffArea');
+      const fb   = document.getElementById('feedback');
       const correct = guess === state.current.note.name;
 
       if (correct) {
