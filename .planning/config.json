@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "mode": "yolo",
+  "granularity": "coarse",
+  "parallelization": true,
+  "commit_docs": true,
+  "model_profile": "inherit",
+  "workflow": {
+    "research": false,
+    "plan_check": true,
+    "verifier": true,
+    "nyquist_validation": false,
+    "auto_advance": false,
+    "research_before_questions": false
+  },
+  "project": {
+    "name": "Note Reader",
+    "code": "NOTE-READER",
+    "type": "brownfield",
+    "description": "Interactive music note reading quiz with grand staff rendering"
+  },
+  "planning": {
+    "commit_docs": true,
+    "sub_repos": []
+  },
+  "created": "2026-04-29"
+}
