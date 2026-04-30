@@ -1,7 +1,7 @@
 # State: Note Reader
 
 **Project:** Note Reader (`NOTE-READER`)
-**Status:** Initialized — Bug Fix Milestone
+**Status:** Active — Phase 1 context gathered, ready for planning
 **Date:** 2026-04-29
 
 ---
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-29)
 
 | Phase | Name | Status | Requirements |
 |-------|------|--------|--------------|
-| 1 | Fix Rendering Bugs | Not started | RENDER-01, RENDER-02 |
+| 1 | Fix Rendering Bugs | Context gathered — Ready for planning | RENDER-01, RENDER-02 |
 
 ---
 
@@ -36,13 +36,24 @@ See: `.planning/PROJECT.md` (updated 2026-04-29)
 
 | Decision | Date | Outcome |
 |----------|------|---------|
-| VexFlow 4 + raw SVG for hints | Original build | ⚠️ Revisit — under investigation in Phase 1 |
-| Single-file HTML | Original build | ✓ Good |
-| Inline all CSS/JS | Original build | ✓ Good |
+| VexFlow 4 + raw SVG for hints | original | ⚠️ Revisit — under investigation in Phase 1 |
+| Single-file HTML | original | ✓ Good |
+| Inline all CSS/JS | original | ✓ Good |
+
+## Phase 1 Decisions
+
+**Hint rendering approach (2026-04-29):**
+- Use single shared Voice with all hints + target (Formatter handles spacing)
+- Target note at right end of sequence (not centered)
+- Hints as quarter/half notes, target as whole note
+
+**Hint visual treatment (2026-04-29):**
+- Hints semi-transparent at 30–40% opacity
+- Labels remain at full opacity
+- Stems + note heads + flags all share the same opacity
 
 ---
 
 ## Next Action
 
-`/gsd-discuss-phase 1` — gather context on the two rendering bugs and plan the fix approach.
-
+Run `/gsd-plan-phase 1` to create execution plans for both rendering fixes.
