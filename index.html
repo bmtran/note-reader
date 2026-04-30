@@ -236,12 +236,39 @@
       return key.charAt(0).toUpperCase();
     }
 
+    function addLabelSVGs(hintKeys, labelXPositions, activeClef) {
+      // Append raw SVG text labels after VexFlow rendering is done
+      const svg = document.querySelector('#staffContainer svg');
+      if (!svg) return;
+      hintKeys.forEach((key, i) => {
+        const label = keyToLabel(key);
+        const hx = labelXPositions[i];
+        // Y: above the note head — treble above, bass below
+        let ly;
+        if (activeClef === 'treble') {
+          ly = 28; // always above the staff
+        } else {
+          ly = 105; // below the bass staff
+        }
+        const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textEl.setAttribute('x', hx);
+        textEl.setAttribute('y', ly);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('font-size', '13');
+        textEl.setAttribute('font-family', 'system-ui, sans-serif');
+        textEl.setAttribute('font-weight', '700');
+        textEl.setAttribute('fill', '#aaaaaa');
+        textEl.textContent = label;
+        svg.appendChild(textEl);
+      });
+    }
+
     // ─── Rendering ──────────────────────────────────────────────────────────────
     function drawGrandStaff(activeClef, targetNote) {
       const container = document.getElementById('staffContainer');
       container.innerHTML = '';
 
-      const {Renderer, Stave, StaveNote, StaveConnector, Annotation} = Vex.Flow;
+      const {Renderer, Stave, StaveNote, StaveConnector, Voice, Formatter} = Vex.Flow;
 
       const renderer = new Renderer(container, Renderer.Backends.SVG);
       renderer.resize(320, 230);
@@ -271,12 +298,14 @@
       const targetKey = noteObj ? noteObj.key : 'c/4';
 
       const targetStave = activeClef === 'treble' ? staveTop : staveBottom;
-      const targetX = width / 2 + 10;
+      const centerX = x + width / 2;
 
-      // Target note
+      // Target note — use Voice + Formatter (VexFlow 4 compatible)
       const target = new StaveNote({clef: activeClef, keys: [targetKey], duration: 'w'});
+      const voice = new Voice({num_beats: 4, beat_value: 1}).setStrict(false);
+      voice.addTickable(target);
+      new Formatter().joinVoices([voice]).format([voice], width - 60);
       target.setStave(targetStave);
-      target.setX(targetX);
       target.setContext(context);
       target.draw();
 
@@ -286,40 +315,53 @@
         const hintKeys = pathKeys.slice(0, -1); // skip target (already drawn)
 
         const leftMargin = 60;
-        const availableWidth = targetX - leftMargin - 15;
+        const availableWidth = centerX - leftMargin - 15;
+        const labelXPositions = [];
 
+        // Draw gray hint notes as raw SVG ellipses (avoids broken setX API)
+        const svg = document.querySelector('#staffContainer svg');
         hintKeys.forEach((key, i) => {
           const ratio = hintKeys.length === 1 ? 0.5 : i / (hintKeys.length - 1);
           const hx = leftMargin + ratio * availableWidth;
+          labelXPositions.push(hx);
 
-          const hint = new StaveNote({clef: activeClef, keys: [key], duration: 'q'});
-          hint.setStave(targetStave);
-          hint.setX(hx);
-
-          // Gray styling
-          try {
-            if (hint.note_heads) {
-              hint.note_heads.forEach(h => h.setStyle({fillStyle: '#bbbbbb', strokeStyle: '#bbbbbb'}));
-            }
-          } catch(e) {}
-          try {
-            hint.setStemStyle({strokeStyle: '#bbbbbb'});
-          } catch(e) {}
-          try {
-            hint.setFlagStyle({fillStyle: '#bbbbbb', strokeStyle: '#bbbbbb'});
-          } catch(e) {}
-
-          if (state.hintLevel >= 2) {
-            const label = keyToLabel(key);
-            const ann = new Annotation(label);
-            ann.setVerticalJustification(Annotation.VerticalJustify.TOP);
-            ann.setFont("Arial", 10, "");
-            hint.addModifier(ann, 0);
+          // Determine Y position based on which line the note is on
+          const noteName = key.split('/')[0];
+          const oct = parseInt(key.split('/')[1]);
+          // Staff lines: line 0=bottom (y=90), line 4=top (y=50) for treble
+          // Each staff position (line or space) shifts by 10px
+          // C4 = first ledger line below treble staff = y~110
+          // Treble: c/4=d/4=e/4=f/4=g/4=a/4=b/4=c/5...
+          const scale = ['c','d','e','f','g','a','b'];
+          const noteIdx = scale.indexOf(noteName);
+          // For treble: c/4 is at y=110 (first ledger), each step up is -10
+          let stavePos;
+          if (activeClef === 'treble') {
+            // c/4 ledger line below staff (y=110), d/4=100, e/4=90(bottom), f/4=80, g/4=70, a/4=60, b/4=50(top), c/5=40
+            stavePos = 11 - noteIdx - (oct - 4) * 7; // 11 = c/4 position (ledger)
+          } else {
+            // Bass: a/2=y=90(bottom), b/2=80, c/3=70, d/3=60, e/3=50(top), f/3=40, g/3=30, a/3=20, b/3=10, c/4=0
+            stavePos = 9 - (noteIdx === 0 ? 9 : noteIdx) - (oct - 4) * 7;
           }
+          const noteY = activeClef === 'treble'
+            ? 110 - stavePos * 5  // treble: y decreases going up
+            : 90 + stavePos * 5;  // bass: y increases going up
 
-          hint.setContext(context);
-          hint.draw();
+          // Whole note ellipse: rx=7, ry=5
+          const ell = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+          ell.setAttribute('cx', hx);
+          ell.setAttribute('cy', noteY);
+          ell.setAttribute('rx', '7');
+          ell.setAttribute('ry', '5');
+          ell.setAttribute('fill', '#ffffff');
+          ell.setAttribute('stroke', '#bbbbbb');
+          ell.setAttribute('stroke-width', '1.5');
+          svg.appendChild(ell);
         });
+
+        if (state.hintLevel >= 2) {
+          addLabelSVGs(hintKeys, labelXPositions, activeClef);
+        }
       }
     }
 
